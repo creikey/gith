@@ -1,0 +1,46 @@
+#!/bin/bash
+
+NERROR_EX=/etc/gith/nerror
+GIT_DIR=".git"
+LOCAL_GIT_DIR="git"
+if [ ! -f "$NERROR_EX" ]; then
+    printf "Not installed\nUse install.sh\n"
+    exit 1
+fi
+
+if [ ! -d "$GIT_DIR" ]; then
+    $NERROR_EX -l "high" "Current folder not a git repository"
+    exit 1
+fi
+if [ ! -d "$LOCAL_GIT_DIR" ]; then
+    $NERROR_EX -l "medium" "Could not find local $LOCAL_GIT_DIR/ folder"
+    $NERROR_EX -l "low" "Creating $LOCAL_GIT_DIR/ folder"
+    mkdir "$LOCAL_GIT_DIR/"
+fi
+
+GIT_HOOKS_DIR="$(readlink -f $GIT_DIR/hooks/)"
+LOCAL_HOOKS_DIR="$(readlink -f $LOCAL_GIT_DIR/hooks/)"
+if [ ! -d "$GIT_HOOKS_DIR" ]; then
+    $NERROR_EX -l "high" "Could not find $GIT_DIR/hooks/ folder"
+    exit 1
+fi
+if [ ! -d "$LOCAL_HOOKS_DIR" ]; then
+    $NERROR_EX -l "medium" "Could not find local $LOCAL_GIT_DIR/hooks/ folder"
+    $NERROR_EX -l "low" "Creating $LOCAL_GIT_DIR/hooks/ folder"
+    mkdir "$LOCAL_GIT_DIR/hooks/"
+fi
+
+$NERROR_EX -l "low" "Installing git hooks"
+
+cd "$LOCAL_HOOKS_DIR"
+
+# Create symlink for each githook into $GIT_HOOKS_DIR
+for file in $(ls -A)
+do
+    if [[ -x $file ]]; then
+        ln -svf "$PWD/$file" "$GIT_HOOKS_DIR"
+    else
+        $NERROR_EX -l "medium" "File $file cannot be executed, skipping"
+    fi
+done
+$NERROR_EX -l "low" "Githooks installed"
