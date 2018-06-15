@@ -1,9 +1,10 @@
 #!/bin/bash
 
 NERROR_EX=/etc/gith/nerror
+GLOBAL_DIR=/etc/gith/global
 GIT_DIR=".git"
 LOCAL_GIT_DIR="git"
-if [ ! -f "$NERROR_EX" ]; then
+if [ ! -f "$NERROR_EX" ] || [ ! -d "$GLOBAL_DIR" ]; then
     printf "Not installed\nUse install.sh\n"
     exit 1
 fi
@@ -16,6 +17,30 @@ if [ ! -d "$LOCAL_GIT_DIR" ]; then
     $NERROR_EX -l "medium" "Could not find local $LOCAL_GIT_DIR/ folder"
     $NERROR_EX -l "low" "Creating $LOCAL_GIT_DIR/ folder"
     mkdir "$LOCAL_GIT_DIR/"
+fi
+
+if [ "$1" == "--help" ] || [ "$1" == "-h" ]; then
+    echo -e -n "--help/-h    -    Show this menu\n"
+    echo -e -n "--prompt/-p  -    Prompt for each hook\n"
+    echo -e -n "--global/-g  -    Install global hooks\n"
+    exit 0
+fi
+
+PROMPT="no"
+GLOBAL="no"
+
+if [ "$1" == "--prompt " ] || [ "$1" == "-p" ]; then
+    PROMPT="yes"
+elif [ "$1" == "--global" ] || [ "$1" == "-g" ]; then
+    GLOBAL="yes"
+elif [ "$1" == "-pg" ] || [ "$1" == "-gp" ]; then
+    GLOBAL="yes"
+    PROMPT="yes"
+fi
+if [ "$2" == "--prompt " ] || [ "$2" == "-p" ]; then
+    PROMPT="yes"
+elif [ "$2" == "--global" ] || [ "$2" == "-g" ]; then
+    GLOBAL="yes"
 fi
 
 GIT_HOOKS_DIR="$(readlink -f $GIT_DIR/hooks/)"
@@ -32,13 +57,28 @@ fi
 
 $NERROR_EX -l "low" "Installing git hooks"
 
-cd "$LOCAL_HOOKS_DIR"
+if [ "$GLOBAL" == "yes" ]; then
+    cd "$GLOBAL_DIR"
+else
+    cd "$LOCAL_HOOKS_DIR"
+fi
 
 # Create symlink for each githook into $GIT_HOOKS_DIR
 for file in $(ls -A)
 do
     if [[ -x $file ]]; then
-        ln -svf "$PWD/$file" "$GIT_HOOKS_DIR"
+        if [ "$PROMPT" == "yes" ]; then
+            printf "Copy file $file over? "
+            read -n1 ans
+            if [ "$ans" == "y" ]; then
+                printf "\n"
+                ln -svf "$PWD/$file" "$GIT_HOOKS_DIR"
+            else
+                printf "...Skipping $file\n"
+            fi
+        else
+            ln -svf "$PWD/$file" "$GIT_HOOKS_DIR"
+        fi
     else
         $NERROR_EX -l "medium" "File $file cannot be executed, skipping"
     fi
